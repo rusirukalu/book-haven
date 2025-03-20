@@ -108,15 +108,15 @@ namespace BookHaven.Controllers
 
                     try
                     {
-                        // Insert order record
                         string orderQuery = @"INSERT INTO orders 
-                                           (customer_id, order_date, status, total_amount) 
-                                           VALUES (@customerId, @orderDate, @status, @totalAmount);
-                                           SELECT LAST_INSERT_ID();";
+                   (customer_id, order_date, delivery_date, status, total_amount) 
+                   VALUES (@customerId, @orderDate, @deliveryDate, @status, @totalAmount);
+                   SELECT LAST_INSERT_ID();";
 
                         MySqlCommand orderCmd = new MySqlCommand(orderQuery, conn);
                         orderCmd.Parameters.AddWithValue("@customerId", order.CustomerID);
                         orderCmd.Parameters.AddWithValue("@orderDate", order.OrderDate);
+                        orderCmd.Parameters.AddWithValue("@deliveryDate", order.DeliveryDate);
                         orderCmd.Parameters.AddWithValue("@status", order.Status);
                         orderCmd.Parameters.AddWithValue("@totalAmount", order.TotalAmount);
 

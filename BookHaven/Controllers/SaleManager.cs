@@ -84,5 +84,88 @@ namespace BookHaven.Controllers
 
             return saleId;
         }
+
+        // Add the GetAllSales method to retrieve all sales from the database
+        public List<Sale> GetAllSales()
+        {
+            List<Sale> sales = new List<Sale>();
+
+            try
+            {
+                using (MySqlConnection conn = DBConnection.GetConnection())
+                {
+                    conn.Open();
+
+                    // First query: Get all sales with customer information
+                    string salesQuery = @"
+                        SELECT s.sale_id, s.customer_id, 
+                               CONCAT(c.first_name, ' ', c.last_name) AS customer_name,
+                               s.sale_date, s.total_amount
+                        FROM sales s
+                        LEFT JOIN customers c ON s.customer_id = c.customer_id
+                        ORDER BY s.sale_date DESC";
+
+                    MySqlCommand salesCmd = new MySqlCommand(salesQuery, conn);
+
+                    using (MySqlDataReader salesReader = salesCmd.ExecuteReader())
+                    {
+                        while (salesReader.Read())
+                        {
+                            Sale sale = new Sale
+                            {
+                                SaleID = Convert.ToInt32(salesReader["sale_id"]),
+                                CustomerID = salesReader["customer_id"] != DBNull.Value ?
+                                    Convert.ToInt32(salesReader["customer_id"]) : 0,
+                                CustomerName = salesReader["customer_name"].ToString(),
+                                SaleDate = Convert.ToDateTime(salesReader["sale_date"]),
+                                TotalAmount = Convert.ToDecimal(salesReader["total_amount"]),
+                                SaleItems = new List<SaleItem>()
+                            };
+
+                            sales.Add(sale);
+                        }
+                    }
+
+                    // Second query: Get all sale items for each sale
+                    foreach (Sale sale in sales)
+                    {
+                        string itemsQuery = @"
+                            SELECT si.sale_item_id, si.sale_id, si.book_id, 
+                                   b.title AS book_title, si.price, si.quantity
+                            FROM sale_items si
+                            JOIN books b ON si.book_id = b.book_id
+                            WHERE si.sale_id = @SaleId";
+
+                        MySqlCommand itemsCmd = new MySqlCommand(itemsQuery, conn);
+                        itemsCmd.Parameters.AddWithValue("@SaleId", sale.SaleID);
+
+                        using (MySqlDataReader itemsReader = itemsCmd.ExecuteReader())
+                        {
+                            while (itemsReader.Read())
+                            {
+                                SaleItem item = new SaleItem
+                                {
+                                    SaleItemID = Convert.ToInt32(itemsReader["sale_item_id"]),
+                                    SaleID = Convert.ToInt32(itemsReader["sale_id"]),
+                                    BookID = Convert.ToInt32(itemsReader["book_id"]),
+                                    BookTitle = itemsReader["book_title"].ToString(),
+                                    Price = Convert.ToDecimal(itemsReader["price"]),
+                                    Quantity = Convert.ToInt32(itemsReader["quantity"])
+                                };
+
+                                sale.SaleItems.Add(item);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ExceptionHandler.HandleException(ex, "retrieving sales");
+                throw new Exception("Error retrieving sales: " + ex.Message);
+            }
+
+            return sales;
+        }
     }
 }

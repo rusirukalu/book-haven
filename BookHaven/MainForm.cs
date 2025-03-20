@@ -13,7 +13,7 @@ namespace BookHaven
 {
     public partial class MainForm : Form
     {
-        private User currentUser; // Add this field to store the current user
+        private User currentUser;
 
         // Add a parameterless constructor for the designer
         public MainForm()
@@ -21,7 +21,6 @@ namespace BookHaven
             InitializeComponent();
         }
 
-        // Add a constructor that accepts a User parameter
         public MainForm(User user)
         {
             InitializeComponent();
@@ -125,18 +124,8 @@ namespace BookHaven
 
         private void viewSalesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // Check user role before allowing access
-            if (currentUser != null && currentUser.Role == "Admin")
-            {
-                ReportsForm reportsForm = new ReportsForm(currentUser);
-                reportsForm.ShowDialog();
-            }
-            else
-            {
-                MessageBox.Show("Access denied. Administrator privileges required to access detailed reports.",
-                    "Access Restricted", MessageBoxButtons.OK, MessageBoxIcon.Stop);
-                // Do NOT proceed to open the form after showing this message
-            }
+            OrderManagementForm orderForm = new OrderManagementForm();
+            orderForm.ShowDialog();
         }
 
         private void viewOrdersToolStripMenuItem_Click(object sender, EventArgs e)
@@ -147,10 +136,9 @@ namespace BookHaven
 
         private void createOrderToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            SalesForm salesForm = new SalesForm();
-            salesForm.ShowDialog();
+            OrderForm orderForm = new OrderForm();
+            orderForm.ShowDialog();
         }
-
         private void viewSuppliersToolStripMenuItem_Click(object sender, EventArgs e)
         {
             SupplierManagementForm supplierForm = new SupplierManagementForm();

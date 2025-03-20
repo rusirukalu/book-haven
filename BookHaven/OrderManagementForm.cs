@@ -17,12 +17,21 @@ namespace BookHaven
         private OrderManager orderManager;
         private List<Order> orders;
         private Order? selectedOrder;
+        private SaleManager saleManager;
 
         public OrderManagementForm()
         {
             InitializeComponent();
+            this.Text = "Transaction Management";
             orderManager = new OrderManager();
-            orders = new List<Order>(); // Initialize to avoid CS8618
+            saleManager = new SaleManager();
+            orders = new List<Order>();
+
+            if (cmbTransactionType.Items.Count == 0)
+            {
+                cmbTransactionType.Items.AddRange(new object[] { "All Transactions", "Orders", "Sales" });
+                cmbTransactionType.SelectedIndex = 0;
+            }
         }
 
         private void OrderManagementForm_Load(object sender, EventArgs e)
@@ -34,6 +43,15 @@ namespace BookHaven
                 cmbStatus.SelectedIndex = 0; // Select "All" by default
             }
 
+            if (cmbTransactionType.Items.Count == 0)
+            {
+                cmbTransactionType.Items.AddRange(new object[] { "All Transactions", "Orders", "Sales" });
+            }
+            if (cmbTransactionType.Items.Count > 0)
+            {
+                cmbTransactionType.SelectedIndex = 0; // Select "All Transactions" by default
+            }
+
             LoadOrders();
         }
 
@@ -41,12 +59,71 @@ namespace BookHaven
         {
             try
             {
-                orders = orderManager.GetAllOrders();
+                orders = new List<Order>(); // Clear existing orders
+                string transactionType = cmbTransactionType.SelectedItem?.ToString() ?? "All Transactions";
 
-                // Debug: Check if orders were retrieved
+                // Load orders if needed
+                if (transactionType == "All Transactions" || transactionType == "Orders")
+                {
+                    List<Order> ordersList = orderManager.GetAllOrders();
+                    if (ordersList != null && ordersList.Count > 0)
+                    {
+                        // Ensure orders have the correct transaction type set
+                        foreach (Order order in ordersList)
+                        {
+                            order.TransactionType = "Order";
+                        }
+                        orders.AddRange(ordersList);
+                    }
+                }
+
+                // Load sales if needed
+                if (transactionType == "All Transactions" || transactionType == "Sales")
+                {
+                    List<Sale> sales = saleManager.GetAllSales();
+                    if (sales != null && sales.Count > 0)
+                    {
+                        // Convert sales to order format for display
+                        foreach (Sale sale in sales)
+                        {
+                            Order orderFromSale = new Order
+                            {
+                                OrderID = sale.SaleID,
+                                CustomerID = sale.CustomerID,
+                                CustomerName = sale.CustomerName,
+                                OrderDate = sale.SaleDate,
+                                DeliveryDate = null, // Sales don't have delivery dates
+                                Status = "Completed", // Sales are always completed
+                                TotalAmount = sale.TotalAmount,
+                                TransactionType = "Sale",
+                                OrderItems = new List<OrderItem>()
+                            };
+
+                            // Convert SaleItems to OrderItems
+                            foreach (SaleItem saleItem in sale.SaleItems)
+                            {
+                                OrderItem orderItem = new OrderItem
+                                {
+                                    OrderItemID = saleItem.SaleItemID,
+                                    OrderID = saleItem.SaleID,
+                                    BookID = saleItem.BookID,
+                                    BookTitle = saleItem.BookTitle,
+                                    Price = saleItem.Price,
+                                    Quantity = saleItem.Quantity
+                                };
+
+                                orderFromSale.OrderItems.Add(orderItem);
+                            }
+
+                            orders.Add(orderFromSale);
+                        }
+                    }
+                }
+
+                // Debug: Check if transactions were retrieved
                 if (orders == null || orders.Count == 0)
                 {
-                    MessageBox.Show("No orders found in the database.", "Information",
+                    MessageBox.Show("No transactions found in the database.", "Information",
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
 
@@ -54,7 +131,7 @@ namespace BookHaven
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error loading orders: " + ex.Message, "Error",
+                MessageBox.Show("Error loading transactions: " + ex.Message, "Error",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -63,19 +140,31 @@ namespace BookHaven
         {
             string searchTerm = txtSearch.Text.Trim().ToLower();
             string statusFilter = cmbStatus.SelectedItem?.ToString() ?? "All";
+            string transactionTypeFilter = cmbTransactionType.SelectedItem?.ToString() ?? "All Transactions";
 
             if (orders == null)
             {
                 return;
             }
 
-            List<Order> filteredOrders = orders;
+            List<Order> filteredOrders = new List<Order>(orders);
 
+            // Filter by transaction type if not "All Transactions"
+            if (transactionTypeFilter != "All Transactions")
+            {
+                if (transactionTypeFilter == "Orders")
+                    filteredOrders = filteredOrders.FindAll(o => o.TransactionType == "Order");
+                else if (transactionTypeFilter == "Sales")
+                    filteredOrders = filteredOrders.FindAll(o => o.TransactionType == "Sale");
+            }
+
+            // Filter by status if not "All"
             if (statusFilter != "All")
             {
                 filteredOrders = filteredOrders.FindAll(o => o.Status == statusFilter);
             }
 
+            // Filter by search term
             if (!string.IsNullOrEmpty(searchTerm))
             {
                 filteredOrders = filteredOrders.FindAll(o =>
@@ -97,7 +186,7 @@ namespace BookHaven
                 return;
             }
 
-            // Add null checks for each column access
+            // Null checks for each column access
             if (dataGridViewOrders.Columns.Contains("OrderID"))
                 dataGridViewOrders.Columns["OrderID"].HeaderText = "Order ID";
 
@@ -143,6 +232,12 @@ namespace BookHaven
 
             if (dataGridViewOrders.Columns.Contains("TotalAmount"))
                 dataGridViewOrders.Columns["TotalAmount"].Width = 120;
+
+            if (dataGridViewOrders.Columns.Contains("TransactionType"))
+            {
+                dataGridViewOrders.Columns["TransactionType"].HeaderText = "Type";
+                dataGridViewOrders.Columns["TransactionType"].Width = 80;
+            }
         }
 
         private void dataGridViewOrders_SelectionChanged(object sender, EventArgs e)
@@ -163,16 +258,49 @@ namespace BookHaven
             txtOrderID.Text = order.OrderID.ToString();
             txtCustomer.Text = order.CustomerName;
             dtpOrderDate.Value = order.OrderDate;
-            cmbOrderStatus.Text = order.Status;
+            lblTransactionTypeValue.Text = order.TransactionType;
 
-            if (order.DeliveryDate.HasValue)
+            // Update the group box title based on transaction type
+            if (order.TransactionType == "Sale")
             {
-                dtpDeliveryDate.Value = order.DeliveryDate.Value;
-                dtpDeliveryDate.Checked = true;
+                groupBoxOrderDetails.Text = "Sale Details";
+                lblOrderID.Text = "Sale ID:";
+                lblOrderDate.Text = "Sale Date:";
+
+                // For sales, hide delivery-related controls completely
+                cmbOrderStatus.Text = "Completed";
+                cmbOrderStatus.Enabled = false;
+                btnUpdateStatus.Visible = false;
+
+                // Hide delivery date controls
+                lblDeliveryDate.Visible = false;
+                dtpDeliveryDate.Visible = false;
             }
-            else
+            else // For orders
             {
-                dtpDeliveryDate.Checked = false;
+                groupBoxOrderDetails.Text = "Order Details";
+                lblOrderID.Text = "Order ID:";
+                lblOrderDate.Text = "Order Date:";
+
+                // Show all controls for Orders
+                cmbOrderStatus.Text = order.Status;
+                cmbOrderStatus.Enabled = true;
+                btnUpdateStatus.Visible = true;
+
+                // Show delivery date controls
+                lblDeliveryDate.Visible = true;
+                dtpDeliveryDate.Visible = true;
+                dtpDeliveryDate.Enabled = true;
+
+                if (order.DeliveryDate.HasValue)
+                {
+                    dtpDeliveryDate.Value = order.DeliveryDate.Value;
+                    dtpDeliveryDate.Checked = true;
+                }
+                else
+                {
+                    dtpDeliveryDate.Checked = false;
+                }
             }
 
             txtTotalAmount.Text = order.TotalAmount.ToString("C2");
@@ -192,7 +320,7 @@ namespace BookHaven
                 return;
             }
 
-            // Add null checks for each column access
+            // Null checks for each column access
             if (dataGridViewOrderItems.Columns.Contains("OrderItemID"))
                 dataGridViewOrderItems.Columns["OrderItemID"].Visible = false;
 
@@ -227,6 +355,72 @@ namespace BookHaven
                 dataGridViewOrderItems.Columns["Subtotal"].Width = 100;
                 dataGridViewOrderItems.Columns["Subtotal"].DefaultCellStyle.Format = "C2";
             }
+
+            // Add color coding for transaction types
+            dataGridViewOrders.CellFormatting += (sender, e) => {
+                if (e.RowIndex >= 0 && e.RowIndex < dataGridViewOrders.Rows.Count &&
+                    dataGridViewOrders.Rows[e.RowIndex].DataBoundItem is Order order)
+                {
+                    if (order.TransactionType == "Sale")
+                        e.CellStyle.BackColor = Color.FromArgb(230, 255, 230); // Light green
+                    else if (order.TransactionType == "Order")
+                        e.CellStyle.BackColor = Color.FromArgb(230, 240, 255); // Light blue
+                }
+            };
+        }
+
+        private void UpdateUIForTransactionType(string transactionType)
+        {
+            if (transactionType == "Sales")
+            {
+                // Update group box title
+                groupBoxOrderDetails.Text = "Sale Details";
+                lblOrderID.Text = "Sale ID:";
+                lblOrderDate.Text = "Sale Date:";
+
+                // Hide order-specific controls
+                lblDeliveryDate.Visible = false;
+                dtpDeliveryDate.Visible = false;
+                btnUpdateStatus.Visible = false;
+
+                // Disable status dropdown
+                cmbOrderStatus.Enabled = false;
+                cmbOrderStatus.Text = "Completed";
+
+                // Clear fields if no item is selected
+                if (selectedOrder == null || selectedOrder.TransactionType != "Sale")
+                {
+                    txtOrderID.Text = "";
+                    txtCustomer.Text = "";
+                    txtTotalAmount.Text = "";
+                    dataGridViewOrderItems.DataSource = null;
+                }
+            }
+            else // Orders or All Transactions
+            {
+                // Update group box title
+                groupBoxOrderDetails.Text = "Order Details";
+                lblOrderID.Text = "Order ID:";
+                lblOrderDate.Text = "Order Date:";
+
+                // Show order-specific controls
+                lblDeliveryDate.Visible = true;
+                dtpDeliveryDate.Visible = true;
+                btnUpdateStatus.Visible = true;
+
+                // Enable status dropdown
+                cmbOrderStatus.Enabled = true;
+
+                // Clear fields if no item is selected
+                if (selectedOrder == null || selectedOrder.TransactionType != "Order")
+                {
+                    txtOrderID.Text = "";
+                    txtCustomer.Text = "";
+                    cmbOrderStatus.Text = "";
+                    txtTotalAmount.Text = "";
+                    dataGridViewOrderItems.DataSource = null;
+                }
+            }
         }
 
         private void cmbStatus_SelectedIndexChanged(object sender, EventArgs e)
@@ -236,12 +430,12 @@ namespace BookHaven
 
         private void label1_Click(object sender, EventArgs e)
         {
-            // This is an auto-generated event handler, can be left empty
+
         }
 
         private void dtpDeliveryDate_ValueChanged(object sender, EventArgs e)
         {
-            // This is an auto-generated event handler, can be left empty
+
         }
 
         private void btnSearch_Click_1(object sender, EventArgs e)
@@ -316,8 +510,6 @@ namespace BookHaven
 
         private void dataGridViewOrderItems_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            // This event handler can be used if you want to implement specific 
-            // actions when clicking on order items, such as:
 
             // 1. Showing detailed book information
             if (e.RowIndex >= 0 && e.ColumnIndex >= 0)
@@ -333,5 +525,43 @@ namespace BookHaven
             }
         }
 
+        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            // Update the header based on selection
+            string? viewType = cmbTransactionType.SelectedItem?.ToString();
+            if (viewType == "Orders")
+            {
+                lblViewType.Text = "ORDERS VIEW";
+                lblViewType.BackColor = Color.FromArgb(230, 240, 255); // Light blue
+                this.Text = "Order Management";
+                UpdateUIForTransactionType("Orders");
+            }
+            else if (viewType == "Sales")
+            {
+                lblViewType.Text = "SALES VIEW";
+                lblViewType.BackColor = Color.FromArgb(230, 255, 230); // Light green
+                this.Text = "Sales Management";
+                UpdateUIForTransactionType("Sales");
+            }
+            else
+            {
+                lblViewType.Text = "ALL TRANSACTIONS";
+                lblViewType.BackColor = Color.Transparent;
+                this.Text = "Transaction Management";
+                UpdateUIForTransactionType("All");
+            }
+
+            LoadOrders();
+        }
+
+        private void groupBoxOrderDetails_Enter(object sender, EventArgs e)
+        {
+
+        }
+
+        private void panelSearch_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
     }
 }

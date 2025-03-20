@@ -29,14 +29,19 @@
         private void InitializeComponent()
         {
             splitContainer1 = new SplitContainer();
+            lblViewType = new Label();
             dataGridViewOrders = new DataGridView();
             panelSearch = new Panel();
+            lblTransactionType = new Label();
+            cmbTransactionType = new ComboBox();
             lblStatus = new Label();
             cmbStatus = new ComboBox();
             btnSearch = new Button();
             txtSearch = new TextBox();
             lblSearchOrders = new Label();
             groupBoxOrderDetails = new GroupBox();
+            lblTransactionTypeValue = new Label();
+            lblTransactionTypeCaption = new Label();
             btnClose = new Button();
             btnNewOrder = new Button();
             btnUpdateStatus = new Button();
@@ -73,32 +78,44 @@
             // 
             // splitContainer1.Panel1
             // 
+            splitContainer1.Panel1.Controls.Add(lblViewType);
             splitContainer1.Panel1.Controls.Add(dataGridViewOrders);
             splitContainer1.Panel1.Controls.Add(panelSearch);
             // 
             // splitContainer1.Panel2
             // 
             splitContainer1.Panel2.Controls.Add(groupBoxOrderDetails);
-            splitContainer1.Size = new Size(1420, 972);
+            splitContainer1.Size = new Size(1735, 1111);
             splitContainer1.SplitterDistance = 473;
             splitContainer1.TabIndex = 0;
+            // 
+            // lblViewType
+            // 
+            lblViewType.AutoSize = true;
+            lblViewType.Font = new Font("Segoe UI", 10.875F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            lblViewType.Location = new Point(12, 78);
+            lblViewType.Name = "lblViewType";
+            lblViewType.Size = new Size(0, 40);
+            lblViewType.TabIndex = 2;
+            lblViewType.TextAlign = ContentAlignment.MiddleCenter;
             // 
             // dataGridViewOrders
             // 
             dataGridViewOrders.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridViewOrders.Dock = DockStyle.Fill;
-            dataGridViewOrders.Location = new Point(0, 75);
+            dataGridViewOrders.Location = new Point(0, 127);
             dataGridViewOrders.MultiSelect = false;
             dataGridViewOrders.Name = "dataGridViewOrders";
             dataGridViewOrders.ReadOnly = true;
             dataGridViewOrders.RowHeadersWidth = 82;
             dataGridViewOrders.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dataGridViewOrders.Size = new Size(1420, 398);
+            dataGridViewOrders.Size = new Size(1735, 343);
             dataGridViewOrders.TabIndex = 1;
             dataGridViewOrders.CellContentClick += dataGridViewOrders_CellContentClick;
             // 
             // panelSearch
             // 
+            panelSearch.Controls.Add(lblTransactionType);
+            panelSearch.Controls.Add(cmbTransactionType);
             panelSearch.Controls.Add(lblStatus);
             panelSearch.Controls.Add(cmbStatus);
             panelSearch.Controls.Add(btnSearch);
@@ -107,13 +124,34 @@
             panelSearch.Dock = DockStyle.Top;
             panelSearch.Location = new Point(0, 0);
             panelSearch.Name = "panelSearch";
-            panelSearch.Size = new Size(1420, 75);
+            panelSearch.Size = new Size(1735, 75);
             panelSearch.TabIndex = 0;
+            panelSearch.Paint += panelSearch_Paint;
+            // 
+            // lblTransactionType
+            // 
+            lblTransactionType.AutoSize = true;
+            lblTransactionType.Location = new Point(751, 22);
+            lblTransactionType.Name = "lblTransactionType";
+            lblTransactionType.Size = new Size(197, 32);
+            lblTransactionType.TabIndex = 6;
+            lblTransactionType.Text = "Transaction Type:";
+            // 
+            // cmbTransactionType
+            // 
+            cmbTransactionType.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbTransactionType.FormattingEnabled = true;
+            cmbTransactionType.Items.AddRange(new object[] { "All Transactions", "Orders", "Sales" });
+            cmbTransactionType.Location = new Point(968, 19);
+            cmbTransactionType.Name = "cmbTransactionType";
+            cmbTransactionType.Size = new Size(266, 40);
+            cmbTransactionType.TabIndex = 5;
+            cmbTransactionType.SelectedIndexChanged += comboBox1_SelectedIndexChanged;
             // 
             // lblStatus
             // 
             lblStatus.AutoSize = true;
-            lblStatus.Location = new Point(747, 22);
+            lblStatus.Location = new Point(1309, 23);
             lblStatus.Name = "lblStatus";
             lblStatus.Size = new Size(83, 32);
             lblStatus.TabIndex = 4;
@@ -123,7 +161,7 @@
             // 
             cmbStatus.FormattingEnabled = true;
             cmbStatus.Items.AddRange(new object[] { "All", "Pending", "Processing", "Completed", "Cancelled" });
-            cmbStatus.Location = new Point(875, 16);
+            cmbStatus.Location = new Point(1421, 19);
             cmbStatus.Name = "cmbStatus";
             cmbStatus.Size = new Size(242, 40);
             cmbStatus.TabIndex = 3;
@@ -158,6 +196,8 @@
             // 
             // groupBoxOrderDetails
             // 
+            groupBoxOrderDetails.Controls.Add(lblTransactionTypeValue);
+            groupBoxOrderDetails.Controls.Add(lblTransactionTypeCaption);
             groupBoxOrderDetails.Controls.Add(btnClose);
             groupBoxOrderDetails.Controls.Add(btnNewOrder);
             groupBoxOrderDetails.Controls.Add(btnUpdateStatus);
@@ -174,17 +214,34 @@
             groupBoxOrderDetails.Controls.Add(lblCustomer);
             groupBoxOrderDetails.Controls.Add(txtOrderID);
             groupBoxOrderDetails.Controls.Add(lblOrderID);
-            groupBoxOrderDetails.Dock = DockStyle.Fill;
-            groupBoxOrderDetails.Location = new Point(0, 0);
+            groupBoxOrderDetails.Location = new Point(0, 55);
             groupBoxOrderDetails.Name = "groupBoxOrderDetails";
-            groupBoxOrderDetails.Size = new Size(1420, 495);
+            groupBoxOrderDetails.Size = new Size(1735, 579);
             groupBoxOrderDetails.TabIndex = 0;
             groupBoxOrderDetails.TabStop = false;
             groupBoxOrderDetails.Text = "Order Details";
+            groupBoxOrderDetails.Enter += groupBoxOrderDetails_Enter;
+            // 
+            // lblTransactionTypeValue
+            // 
+            lblTransactionTypeValue.AutoSize = true;
+            lblTransactionTypeValue.Location = new Point(322, 515);
+            lblTransactionTypeValue.Name = "lblTransactionTypeValue";
+            lblTransactionTypeValue.Size = new Size(0, 32);
+            lblTransactionTypeValue.TabIndex = 18;
+            // 
+            // lblTransactionTypeCaption
+            // 
+            lblTransactionTypeCaption.AutoSize = true;
+            lblTransactionTypeCaption.Location = new Point(29, 515);
+            lblTransactionTypeCaption.Name = "lblTransactionTypeCaption";
+            lblTransactionTypeCaption.Size = new Size(197, 32);
+            lblTransactionTypeCaption.TabIndex = 17;
+            lblTransactionTypeCaption.Text = "Transaction Type:";
             // 
             // btnClose
             // 
-            btnClose.Location = new Point(1045, 399);
+            btnClose.Location = new Point(1174, 406);
             btnClose.Name = "btnClose";
             btnClose.Size = new Size(189, 46);
             btnClose.TabIndex = 15;
@@ -194,7 +251,7 @@
             // 
             // btnNewOrder
             // 
-            btnNewOrder.Location = new Point(791, 404);
+            btnNewOrder.Location = new Point(920, 411);
             btnNewOrder.Name = "btnNewOrder";
             btnNewOrder.Size = new Size(189, 46);
             btnNewOrder.TabIndex = 14;
@@ -204,7 +261,7 @@
             // 
             // btnUpdateStatus
             // 
-            btnUpdateStatus.Location = new Point(560, 411);
+            btnUpdateStatus.Location = new Point(689, 418);
             btnUpdateStatus.Name = "btnUpdateStatus";
             btnUpdateStatus.Size = new Size(189, 46);
             btnUpdateStatus.TabIndex = 13;
@@ -214,7 +271,7 @@
             // 
             // txtTotalAmount
             // 
-            txtTotalAmount.Location = new Point(236, 411);
+            txtTotalAmount.Location = new Point(207, 408);
             txtTotalAmount.Name = "txtTotalAmount";
             txtTotalAmount.ReadOnly = true;
             txtTotalAmount.Size = new Size(275, 39);
@@ -223,7 +280,7 @@
             // lblTotalAmount
             // 
             lblTotalAmount.AutoSize = true;
-            lblTotalAmount.Location = new Point(58, 406);
+            lblTotalAmount.Location = new Point(29, 403);
             lblTotalAmount.Name = "lblTotalAmount";
             lblTotalAmount.Size = new Size(163, 32);
             lblTotalAmount.TabIndex = 11;
@@ -244,7 +301,7 @@
             // dtpDeliveryDate
             // 
             dtpDeliveryDate.Enabled = false;
-            dtpDeliveryDate.Location = new Point(223, 312);
+            dtpDeliveryDate.Location = new Point(212, 320);
             dtpDeliveryDate.Name = "dtpDeliveryDate";
             dtpDeliveryDate.Size = new Size(400, 39);
             dtpDeliveryDate.TabIndex = 9;
@@ -253,7 +310,7 @@
             // lblDeliveryDate
             // 
             lblDeliveryDate.AutoSize = true;
-            lblDeliveryDate.Location = new Point(36, 309);
+            lblDeliveryDate.Location = new Point(25, 317);
             lblDeliveryDate.Name = "lblDeliveryDate";
             lblDeliveryDate.Size = new Size(163, 32);
             lblDeliveryDate.TabIndex = 8;
@@ -333,15 +390,16 @@
             // 
             AutoScaleDimensions = new SizeF(13F, 32F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1420, 972);
+            ClientSize = new Size(1735, 1111);
             Controls.Add(splitContainer1);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MinimizeBox = false;
             Name = "OrderManagementForm";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "Order Management";
+            Text = "Transaction Management";
             Load += OrderManagementForm_Load;
             splitContainer1.Panel1.ResumeLayout(false);
+            splitContainer1.Panel1.PerformLayout();
             splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)splitContainer1).EndInit();
             splitContainer1.ResumeLayout(false);
@@ -381,5 +439,10 @@
         private Button btnClose;
         private Button btnNewOrder;
         private Button btnUpdateStatus;
+        private ComboBox cmbTransactionType;
+        private Label lblTransactionType;
+        private Label lblTransactionTypeCaption;
+        private Label lblTransactionTypeValue;
+        private Label lblViewType;
     }
 }

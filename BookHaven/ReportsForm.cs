@@ -35,7 +35,7 @@ namespace BookHaven
         {
             currentUser = user;
 
-            // Add this block to enforce access control
+            // enforcing access control
             if (currentUser != null && currentUser.Role != "Admin")
             {
                 MessageBox.Show("You need administrator privileges to access detailed reports.",
@@ -130,40 +130,81 @@ namespace BookHaven
         {
             try
             {
-                // This would typically fetch data from the database
-                // For now, we'll create a sample dataset
-
                 DataTable salesData = new DataTable();
                 salesData.Columns.Add("Date", typeof(DateTime));
                 salesData.Columns.Add("Total Sales", typeof(decimal));
                 salesData.Columns.Add("Number of Orders", typeof(int));
                 salesData.Columns.Add("Average Order Value", typeof(decimal));
 
-                // In a real implementation, this would be fetched from the database
-                // For this example, we'll generate sample data
-                Random random = new Random();
-                DateTime currentDate = startDate;
+                // Format date parts for SQL query
+                string dateFormat = "";
+                string dateGroupBy = "";
 
-                while (currentDate <= endDate)
+                switch (period)
                 {
-                    decimal totalSales = random.Next(500, 2000);
-                    int numberOfOrders = random.Next(5, 20);
-                    decimal averageOrderValue = totalSales / numberOfOrders;
+                    case "Daily":
+                        dateFormat = "%Y-%m-%d";
+                        dateGroupBy = "DATE(sale_date)";
+                        break;
+                    case "Weekly":
+                        dateFormat = "%Y-%U"; // Year-Week
+                        dateGroupBy = "YEARWEEK(sale_date)";
+                        break;
+                    case "Monthly":
+                        dateFormat = "%Y-%m";
+                        dateGroupBy = "YEAR(sale_date), MONTH(sale_date)";
+                        break;
+                }
 
-                    salesData.Rows.Add(currentDate, totalSales, numberOfOrders, Math.Round(averageOrderValue, 2));
+                using (MySqlConnection conn = DBConnection.GetConnection())
+                {
+                    conn.Open();
+                    string query = $@"
+                SELECT 
+                    DATE_FORMAT(sale_date, '{dateFormat}') as ReportDate,
+                    SUM(total_amount) as TotalSales,
+                    COUNT(*) as NumberOfOrders,
+                    SUM(total_amount)/COUNT(*) as AverageOrderValue
+                FROM 
+                    sales
+                WHERE 
+                    sale_date BETWEEN @StartDate AND @EndDate
+                GROUP BY 
+                    DATE_FORMAT(sale_date, '{dateFormat}')
+                ORDER BY 
+                    MIN(sale_date)";
 
-                    // Increment date based on selected period
-                    switch (period)
+                    MySqlCommand cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@StartDate", startDate);
+                    cmd.Parameters.AddWithValue("@EndDate", endDate);
+
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
                     {
-                        case "Daily":
-                            currentDate = currentDate.AddDays(1);
-                            break;
-                        case "Weekly":
-                            currentDate = currentDate.AddDays(7);
-                            break;
-                        case "Monthly":
-                            currentDate = currentDate.AddMonths(1);
-                            break;
+                        while (reader.Read())
+                        {
+                            DateTime reportDate;
+
+                            if (period == "Weekly")
+                            {
+                                // Parse year-week format
+                                string[] parts = reader["ReportDate"].ToString().Split('-');
+                                int year = int.Parse(parts[0]);
+                                int week = int.Parse(parts[1]);
+                                reportDate = GetFirstDayOfWeek(year, week);
+                            }
+                            else
+                            {
+                                // Parse standard date format
+                                reportDate = DateTime.Parse(reader["ReportDate"].ToString());
+                            }
+
+                            salesData.Rows.Add(
+                                reportDate,
+                                Convert.ToDecimal(reader["TotalSales"]),
+                                Convert.ToInt32(reader["NumberOfOrders"]),
+                                Convert.ToDecimal(reader["AverageOrderValue"])
+                            );
+                        }
                     }
                 }
 
@@ -187,6 +228,23 @@ namespace BookHaven
             {
                 throw new Exception("Error generating sales summary report: " + ex.Message);
             }
+        }
+
+        // Helper method for weekly date calculation
+        private DateTime GetFirstDayOfWeek(int year, int weekOfYear)
+        {
+            DateTime jan1 = new DateTime(year, 1, 1);
+            int daysOffset = DayOfWeek.Thursday - jan1.DayOfWeek;
+            DateTime firstThursday = jan1.AddDays(daysOffset);
+            var cal = System.Globalization.CultureInfo.CurrentCulture.Calendar;
+            int firstWeek = cal.GetWeekOfYear(firstThursday, System.Globalization.CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday);
+            var weekNum = weekOfYear;
+            if (firstWeek <= 1)
+            {
+                weekNum -= 1;
+            }
+            var result = firstThursday.AddDays(weekNum * 7);
+            return result.AddDays(-3);
         }
 
         private void CreateSalesChart(DataTable data)
@@ -226,9 +284,6 @@ namespace BookHaven
         {
             try
             {
-                // This would typically fetch data from the database
-                // For now, we'll create a sample dataset
-
                 DataTable booksData = new DataTable();
                 booksData.Columns.Add("Book ID", typeof(int));
                 booksData.Columns.Add("Title", typeof(string));
@@ -236,26 +291,55 @@ namespace BookHaven
                 booksData.Columns.Add("Quantity Sold", typeof(int));
                 booksData.Columns.Add("Revenue", typeof(decimal));
 
-                // Sample data
-                booksData.Rows.Add(101, "The Great Gatsby", "F. Scott Fitzgerald", 42, 545.58);
-                booksData.Rows.Add(203, "To Kill a Mockingbird", "Harper Lee", 38, 569.62);
-                booksData.Rows.Add(305, "1984", "George Orwell", 35, 419.65);
-                booksData.Rows.Add(407, "Pride and Prejudice", "Jane Austen", 30, 389.70);
-                booksData.Rows.Add(512, "The Catcher in the Rye", "J.D. Salinger", 28, 335.72);
+                using (MySqlConnection conn = DBConnection.GetConnection())
+                {
+                    conn.Open();
+                    string query = @"
+                SELECT 
+                    b.book_id as BookID,
+                    b.title as Title,
+                    b.author as Author,
+                    SUM(si.quantity) as QuantitySold,
+                    SUM(si.price * si.quantity) as Revenue
+                FROM 
+                    books b
+                    INNER JOIN sale_items si ON b.book_id = si.book_id
+                    INNER JOIN sales s ON si.sale_id = s.sale_id
+                WHERE 
+                    s.sale_date BETWEEN @StartDate AND @EndDate
+                GROUP BY 
+                    b.book_id, b.title, b.author
+                ORDER BY 
+                    QuantitySold DESC
+                LIMIT 10";
 
-                // Sort by quantity sold descending
-                DataView dv = booksData.DefaultView;
-                dv.Sort = "Quantity Sold DESC";
-                DataTable sortedTable = dv.ToTable();
+                    MySqlCommand cmd = new MySqlCommand(query, conn);
+                    cmd.Parameters.AddWithValue("@StartDate", startDate);
+                    cmd.Parameters.AddWithValue("@EndDate", endDate);
 
-                dataGridViewReport.DataSource = sortedTable;
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            booksData.Rows.Add(
+                                Convert.ToInt32(reader["BookID"]),
+                                reader["Title"].ToString(),
+                                reader["Author"].ToString(),
+                                Convert.ToInt32(reader["QuantitySold"]),
+                                Convert.ToDecimal(reader["Revenue"])
+                            );
+                        }
+                    }
+                }
+
+                dataGridViewReport.DataSource = booksData;
 
                 // Format the DataGridView
                 dataGridViewReport.Columns["Revenue"].DefaultCellStyle.Format = "C2";
                 dataGridViewReport.AutoResizeColumns();
 
                 // Create chart for best selling books
-                CreateBestSellingBooksChart(sortedTable);
+                CreateBestSellingBooksChart(booksData);
 
                 tabControlReports.SelectedTab = tabControlReports.TabPages["Data View"];
             }
@@ -303,9 +387,6 @@ namespace BookHaven
         {
             try
             {
-                // This would typically fetch data from the database
-                // For now, we'll create a sample dataset
-
                 DataTable inventoryData = new DataTable();
                 inventoryData.Columns.Add("Book ID", typeof(int));
                 inventoryData.Columns.Add("Title", typeof(string));
@@ -314,29 +395,44 @@ namespace BookHaven
                 inventoryData.Columns.Add("Reorder Level", typeof(int));
                 inventoryData.Columns.Add("Status", typeof(string));
 
-                // Sample data
-                inventoryData.Rows.Add(101, "The Great Gatsby", "F. Scott Fitzgerald", 15, 10, "OK");
-                inventoryData.Rows.Add(203, "To Kill a Mockingbird", "Harper Lee", 8, 10, "Low");
-                inventoryData.Rows.Add(305, "1984", "George Orwell", 3, 10, "Critical");
-                inventoryData.Rows.Add(407, "Pride and Prejudice", "Jane Austen", 0, 10, "Out of Stock");
-                inventoryData.Rows.Add(512, "The Catcher in the Rye", "J.D. Salinger", 12, 10, "OK");
+                // Define reorder level (you could store this in a settings table)
+                int reorderLevel = 10;
 
-                // Add more sample data...
-                for (int i = 600; i < 620; i++)
+                using (MySqlConnection conn = DBConnection.GetConnection())
                 {
-                    Random rand = new Random(i);
-                    int stock = rand.Next(0, 25);
-                    string status = stock == 0 ? "Out of Stock" :
-                                   stock < 5 ? "Critical" :
-                                   stock < 10 ? "Low" : "OK";
+                    conn.Open();
+                    string query = @"
+                SELECT 
+                    book_id as BookID,
+                    title as Title,
+                    author as Author,
+                    stock_quantity as CurrentStock
+                FROM 
+                    books
+                ORDER BY 
+                    stock_quantity ASC";
 
-                    inventoryData.Rows.Add(
-                        i,
-                        $"Book Title {i}",
-                        $"Author {i % 10}",
-                        stock,
-                        10,
-                        status);
+                    MySqlCommand cmd = new MySqlCommand(query, conn);
+
+                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            int currentStock = Convert.ToInt32(reader["CurrentStock"]);
+                            string status = currentStock == 0 ? "Out of Stock" :
+                                           currentStock < 5 ? "Critical" :
+                                           currentStock < reorderLevel ? "Low" : "OK";
+
+                            inventoryData.Rows.Add(
+                                Convert.ToInt32(reader["BookID"]),
+                                reader["Title"].ToString(),
+                                reader["Author"].ToString(),
+                                currentStock,
+                                reorderLevel,
+                                status
+                            );
+                        }
+                    }
                 }
 
                 dataGridViewReport.DataSource = inventoryData;
@@ -372,6 +468,7 @@ namespace BookHaven
                 throw new Exception("Error generating inventory status report: " + ex.Message);
             }
         }
+
 
         private void CreateInventoryStatusChart(DataTable data)
         {
@@ -535,32 +632,32 @@ namespace BookHaven
 
         private void cmbPeriod_SelectedIndexChanged(object sender, EventArgs e)
         {
-            // This is an auto-generated event handler, can be left empty
+
         }
 
         private void dtpStartDate_ValueChanged(object sender, EventArgs e)
         {
-            // This is an auto-generated event handler, can be left empty
+
         }
 
         private void dtpEndDate_ValueChanged(object sender, EventArgs e)
         {
-            // This is an auto-generated event handler, can be left empty
+
         }
 
         private void panelReportOptions_Paint(object sender, PaintEventArgs e)
         {
-            // This is an auto-generated event handler, can be left empty
+
         }
 
         private void dataGridViewReport_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            // This is an auto-generated event handler, can be left empty
+
         }
 
         private void panelChart_Paint(object sender, PaintEventArgs e)
         {
-            // This is an auto-generated event handler, can be left empty
+
         }
     }
 }
