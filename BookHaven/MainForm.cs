@@ -55,7 +55,6 @@ namespace BookHaven
                 // Hide View Sales option
                 viewSalesToolStripMenuItem.Visible = false;
 
-                // You can add more restrictions here as needed
             }
         }
 

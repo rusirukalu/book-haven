@@ -62,7 +62,7 @@
             menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, booksToolStripMenuItem, customersToolStripMenuItem, salesToolStripMenuItem, ordersToolStripMenuItem, suppliersToolStripMenuItem, reportsToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
-            menuStrip1.Size = new Size(1489, 42);
+            menuStrip1.Size = new Size(1489, 40);
             menuStrip1.TabIndex = 0;
             menuStrip1.Text = "menuStrip1";
             // 
@@ -145,9 +145,9 @@
             // 
             // salesToolStripMenuItem
             // 
-            salesToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { newSaleToolStripMenuItem, viewSalesToolStripMenuItem });
+            salesToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { viewSalesToolStripMenuItem, newSaleToolStripMenuItem });
             salesToolStripMenuItem.Name = "salesToolStripMenuItem";
-            salesToolStripMenuItem.Size = new Size(88, 38);
+            salesToolStripMenuItem.Size = new Size(88, 36);
             salesToolStripMenuItem.Text = "Sales";
             // 
             // newSaleToolStripMenuItem
@@ -230,9 +230,9 @@
             // mainPanel
             // 
             mainPanel.Dock = DockStyle.Fill;
-            mainPanel.Location = new Point(0, 42);
+            mainPanel.Location = new Point(0, 40);
             mainPanel.Name = "mainPanel";
-            mainPanel.Size = new Size(1489, 796);
+            mainPanel.Size = new Size(1489, 798);
             mainPanel.TabIndex = 1;
             // 
             // MainForm
